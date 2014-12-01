@@ -18,6 +18,19 @@
  * Changelog
  * Date         Changed By          Details of change  
  * 23 Nov 2013  Gerhard de Clercq   Changed digitalread to return int and implemented wiringPiISR
+ *  
+ ************************************************************************************************
+ * Changelog
+ * Date         Changed By          Details of change  
+ * 01 Dec 2014  Marek Krzyzowski    Changed:
+ *                                  Add: Init.wiringPiSetupPhys
+ *                                  Change: class GPIO, now pin number corresponds used WiringPiSetupXXX,
+ *                                  modified/extended enums (GpioPinMode,PullMode), PWM function moved to
+ *                                  PWM class.
+ *                                  Add: PWM class
+ *                                  Add: Timing.micros
+ *                                  Change: PiThreadInterrupts enum InterruptMode
+ *                                  Add: MiscFunctions.physPinToGpio, MiscFunctions.getAlt
  * 
  ************************************************************************************************/
 using System;
@@ -39,6 +52,9 @@ namespace WiringPi
         [DllImport("libwiringPi.so", EntryPoint = "wiringPiSetupGpio")]
         public static extern int WiringPiSetupGpio();
 
+        [DllImport("libwiringPi.so", EntryPoint = "wiringPiSetupPhys")]
+        public static extern int wiringPiSetupPhys();
+
         [DllImport("libwiringPi.so", EntryPoint = "wiringPiSetupSys")]
         public static extern int WiringPiSetupSys();
     }
@@ -48,44 +64,61 @@ namespace WiringPi
     /// </summary>
     public class GPIO
     {
-        [DllImport("libwiringPi.so", EntryPoint = "pinModeGpio")]           //Uses Gpio pin numbers
-        public static extern void pinMode(int pin, int mode);
 
-        [DllImport("libwiringPi.so", EntryPoint = "digitalWriteGpio")]      //Uses Gpio pin numbers
-        public static extern void digitalWrite(int pin, int value);
+        public int Low = 0;
+        public int High = 0;
 
-        [DllImport("libwiringPi.so", EntryPoint = "digitalWriteByteGpio")]      //Uses Gpio pin numbers
-        public static extern void digitalWriteByte(int value);
+        public enum PullMode
+        {
+            PudOff = 0,
+            PudDown = 1,
+            PudUp = 2
+        }
 
-        [DllImport("libwiringPi.so", EntryPoint = "digitalReadGpio")]           //Uses Gpio pin numbers
-        public static extern int digitalRead(int pin);
-
-        [DllImport("libwiringPi.so", EntryPoint = "pullUpDnControlGpio")]         //Uses Gpio pin numbers  
-        public static extern void pullUpDnControl(int pin, int pud);
-
-        //This pwm mode cannot be used when using GpioSys mode!!
-        [DllImport("libwiringPi.so", EntryPoint = "pwmWriteGpio")]              //Uses Gpio pin numbers
-        public static extern void pwmWrite(int pin, int value);
-
-        [DllImport("libwiringPi.so", EntryPoint = "pwmSetModeGpio")]             //Uses Gpio pin numbers
-        public static extern void pwmSetMode(int mode);
-
-        [DllImport("libwiringPi.so", EntryPoint = "pwmSetRangeGpio")]             //Uses Gpio pin numbers
-        public static extern void pwmSetRange(uint range);
-
-        [DllImport("libwiringPi.so", EntryPoint = "pwmSetClockGpio")]             //Uses Gpio pin numbers
-        public static extern void pwmSetClock(int divisor);
-
-        [DllImport("libwiringPi.so", EntryPoint = "gpioClockSetGpio")]              //Uses Gpio pin numbers
-        public static extern void ClockSetGpio(int pin, int freq);
-
-        public enum GPIOpinmode
+        public enum GpioPinMode
         {
             Input = 0,
             Output = 1,
-            PWMOutput = 2,
-            GPIOClock = 3
+            PwmOutput = 2,
+            GpioClock = 3,
+            SoftPwmOutput = 4,
+            SoftToneOutput = 5,
+            PwmToneOutput = 6
         }
+
+        //PIN MODE READ WRITE PULLCONTROL
+        //extern void pinModeAlt(int pin, int mode);
+        [DllImport("libwiringPi.so", EntryPoint = "pinModeAlt")]
+        public static extern void pinModeAlt(int pin, GpioPinMode mode);
+
+        //extern void pinMode(int pin, int mode);
+        [DllImport("libwiringPi.so", EntryPoint = "pinMode")]
+        public static extern void pinMode(int pin, GpioPinMode mode);
+
+        //extern void pullUpDnControl(int pin, int pud);
+        [DllImport("libwiringPi.so", EntryPoint = "pullUpDnControl")]
+        public static extern void pullUpDnControl(int pin, PullMode pud);
+
+        //extern int digitalRead(int pin);
+        [DllImport("libwiringPi.so", EntryPoint = "digitalRead")]
+        public static extern int digitalRead(int pin);
+
+        //extern void digitalWrite(int pin, int value);
+        [DllImport("libwiringPi.so", EntryPoint = "digitalWrite")]
+        public static extern void digitalWrite(int pin, int value);
+
+        //extern int analogRead(int pin);
+        [DllImport("libwiringPi.so", EntryPoint = "analogRead")]
+        public static extern int analogRead(int pin);
+
+        [DllImport("libwiringPi.so", EntryPoint = "analogWrite")]
+        public static extern void analogWrite(int pin, int value);
+
+        [DllImport("libwiringPi.so", EntryPoint = "digitalWriteByte")]
+        public static extern void digitalWriteByte(int value);
+
+        [DllImport("libwiringPi.so", EntryPoint = "gpioClockSet")]
+        public static extern void gpioClockSet(int pin, int freq);
     }
 
     /// <summary>
@@ -93,13 +126,16 @@ namespace WiringPi
     /// </summary>
     public class Timing
     {
-        [DllImport("libwiringPi.so", EntryPoint = "millis")]
+        [DllImport("libwiringPi.so", EntryPoint = "millis")] //ms
         public static extern uint millis();
 
-        [DllImport("libwiringPi.so", EntryPoint = "delay")]
+        [DllImport("libwiringPi.so", EntryPoint = "micros")] //us
+        public static extern uint micros();
+
+        [DllImport("libwiringPi.so", EntryPoint = "delay")] //Delay in ms
         public static extern void delay(uint howLong);
 
-        [DllImport("libwiringPi.so", EntryPoint = "delayMicroseconds")]
+        [DllImport("libwiringPi.so", EntryPoint = "delayMicroseconds")] //Delay in us
         public static extern void delayMicroseconds(uint howLong);
     }
 
@@ -108,31 +144,33 @@ namespace WiringPi
     /// </summary>
     public class PiThreadInterrupts
     {
+        public enum InterruptMode
+        {
+            IntEdgeSetup = 0,
+            IntEdgeFalling = 1,
+            IntEdgeRising = 2,
+            IntEdgeBoth = 3,
+        }
+
         [DllImport("libwiringPi.so", EntryPoint = "piHiPri")]
         public static extern int PiHiPri(int priority);
 
         [DllImport("libwiringPi.so", EntryPoint = "waitForInterrupt")]
         public static extern int waitForInterrupt(int pin, int timeout);
 
-        //This is the C# equivelant to "void (*function)(void))" required by wiringPi to define a callback method
+        //This is the C# equivelant to "void (*function)(void))" required by libwiringPi to define a callback method
         public delegate void ISRCallback();
 
         [DllImport("libwiringPi.so", EntryPoint = "wiringPiISR")]
-        public static extern int wiringPiISR(int pin, int mode, ISRCallback method);
+        public static extern int wiringPiISR(int pin, InterruptMode mode, ISRCallback method);
 
-        public enum InterruptLevels
-        {
-            INT_EDGE_SETUP = 0,
-            INT_EDGE_FALLING = 1,
-            INT_EDGE_RISING = 2,
-            INT_EDGE_BOTH = 3
-        }
-
+        //TODO
         //static extern int piThreadCreate(string name);
     }
 
     public class MiscFunctions
     {
+        //UTILS
         [DllImport("libwiringPi.so", EntryPoint = "piBoardRev")]
         public static extern int piBoardRev();
 
@@ -141,6 +179,37 @@ namespace WiringPi
 
         [DllImport("libwiringPi.so", EntryPoint = "setPadDrive")]
         public static extern int setPadDrive(int group, int value);
+        
+        [DllImport("libwiringPi.so", EntryPoint = "physPinToGpio")]
+        public static extern int physPinToGpio(int physPin);
+        
+        [DllImport("libwiringPi.so", EntryPoint = "getAlt")]
+        public static extern int getAlt(int pin);
+
+        //TODO
+        //extern void piBoardId           (int *model, int *rev, int *mem, int *maker, int *overVolted) ;
+    }
+
+    /// <summary>
+    /// Provides use of the PWM functions
+    /// </summary>
+    public class PWM
+    {
+        //PWM
+        [DllImport("libwiringPi.so", EntryPoint = "pwmWrite")]
+        public static extern void pwmWrite(int pin, int value);
+
+        [DllImport("libwiringPi.so", EntryPoint = "pwmSetMode")]
+        public static extern void pwmSetMode(int mode);
+
+        [DllImport("libwiringPi.so", EntryPoint = "pwmSetRange")]
+        public static extern void pwmSetRange(uint range);
+
+        [DllImport("libwiringPi.so", EntryPoint = "pwmSetClock")]
+        public static extern void pwmSetClock(int divisor);
+
+        [DllImport("libwiringPi.so", EntryPoint = "pwmToneWrite")]
+        public static extern void pwmToneWrite(int pin, int freq);
     }
 
     /// <summary>
